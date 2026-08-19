@@ -1,12 +1,12 @@
 import 'reflect-metadata';
-import { Logger } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { configureApp } from './bootstrap';
 import { AppEnv, ENV_NAMESPACE } from './config/env';
 
-async function bootstrap(): Promise<void> {
+export async function bootstrap(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   const env = app.get(ConfigService).getOrThrow<AppEnv>(ENV_NAMESPACE);
 
@@ -15,6 +15,12 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(env.PORT, '0.0.0.0');
   new Logger('Bootstrap').log(`T_Hotel API dang chay tai http://localhost:${env.PORT}/api`);
+  return app;
 }
 
-void bootstrap();
+// Chi tu chay khi duoc goi truc tiep (`node dist/main.js`). Khi file nay duoc
+// import — scripts/dev-up.js lam vay de tu dong dong app luc Ctrl+C — thi khong
+// tu khoi dong, de ben goi quyet dinh vong doi.
+if (require.main === module) {
+  void bootstrap();
+}

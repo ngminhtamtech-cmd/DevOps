@@ -2,20 +2,30 @@
 
 REST API của T_Hotel. NestJS + Postgres (`pg`, SQL thuần) + Supabase Auth.
 
-## Chạy trên máy (không cần Docker, không cần mật khẩu Supabase)
+## Chạy trên máy — một lệnh
 
 ```bash
-# terminal 1 — Postgres cục bộ, giữ dữ liệu giữa các lần chạy
-npm run db:local
+npm run dev          # chạy ở thư mục gốc monorepo
+```
 
-# terminal 2
-cp ../../.env.example .env      # rồi sửa DATABASE_URL trỏ về cổng 55432
-npm run db:migrate
+Lệnh này dựng trọn môi trường dev trong một tiến trình: bật Postgres cục bộ (không cần
+Docker, không cần mật khẩu Supabase), chạy migration, seed dữ liệu mẫu, khởi động API, rồi
+in sẵn `hotelId`, `roomId` và **token admin + token khách** để thử ngay bằng `curl`. Tự tạo
+`.env` với cấu hình mặc định nếu chưa có. `Ctrl+C` dừng cả API lẫn Postgres.
+
+API lắng nghe ở `http://localhost:3001/api`.
+
+Nếu `DATABASE_URL` trỏ ra ngoài máy (ví dụ Supabase), lệnh này bỏ qua bước bật Postgres cục
+bộ và chỉ migrate + seed + chạy API.
+
+### Chạy từng bước (khi cần kiểm soát riêng)
+
+```bash
+npm run db:local     # terminal 1 — Postgres cục bộ, giữ dữ liệu giữa các lần chạy
+npm run db:migrate   # terminal 2
 npm run db:seed
 npm run build && npm start
 ```
-
-API lắng nghe ở `http://localhost:3001/api`.
 
 ## Chạy với Supabase
 
