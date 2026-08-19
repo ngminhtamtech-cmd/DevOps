@@ -151,17 +151,4 @@ export class RoomTypesService {
       priority: created.priority,
     };
   }
-
-  /** Goi ham SQL calculate_stay_price — nguon su that duy nhat ve gia. */
-  async calculateStayPrice(
-    roomTypeId: string,
-    checkIn: string,
-    checkOut: string,
-  ): Promise<number> {
-    const row = await this.database.queryOne<{ total: string }>(
-      'select public.calculate_stay_price($1, $2::date, $3::date) as total',
-      [roomTypeId, checkIn, checkOut],
-    );
-    return centsToNumber(row?.total ?? 0);
-  }
 }

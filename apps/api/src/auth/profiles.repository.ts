@@ -41,8 +41,4 @@ export class ProfilesRepository {
 
     return created as ProfileRow;
   }
-
-  async setRole(userId: string, role: UserRole): Promise<void> {
-    await this.database.query('update public.profiles set role = $2 where id = $1', [userId, role]);
-  }
 }
