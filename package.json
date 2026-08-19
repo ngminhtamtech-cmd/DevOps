@@ -4,8 +4,8 @@
   "private": true,
   "description": "T_Hotel - he thong dat phong khach san (monorepo)",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "engines": {
     "node": ">=20"
