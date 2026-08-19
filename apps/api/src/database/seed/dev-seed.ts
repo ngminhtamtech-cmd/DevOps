@@ -15,9 +15,15 @@ export interface SeedResult {
   roomIds: string[];
 }
 
+const HOTEL = { name: 'T_Hotel Da Nang', address: '12 Vo Nguyen Giap', city: 'Da Nang' };
+
 /**
- * Du lieu mau cho moi truong dev. Viet theo kieu idempotent (on conflict do nothing)
- * de chay lai nhieu lan khong sinh ban trung.
+ * Du lieu mau cho moi truong dev. Idempotent: chay lai nhieu lan khong sinh ban trung.
+ *
+ * Moi bang co mot cach nhan dien "da co roi" khac nhau: room_types va rooms dua
+ * vao unique constraint san co nen dung `on conflict`, con hotels khong co unique
+ * nao ngoai khoa chinh sinh tu dong — `on conflict do nothing` o do khong bao gio
+ * kich hoat, nen phai hoi truoc bang `where not exists`.
  */
 export async function seedDevData(options: SeedOptions): Promise<SeedResult> {
   const log = options.log ?? (() => undefined);
@@ -28,20 +34,20 @@ export async function seedDevData(options: SeedOptions): Promise<SeedResult> {
   await client.connect();
 
   try {
-    const hotel = await client.query<{ id: string }>(
+    await client.query(
       `insert into public.hotels (name, address, city)
-       values ('T_Hotel Da Nang', '12 Vo Nguyen Giap', 'Da Nang')
-       on conflict do nothing
-       returning id`,
+       select $1, $2, $3
+       where not exists (
+         select 1 from public.hotels where name = $1 and city = $3
+       )`,
+      [HOTEL.name, HOTEL.address, HOTEL.city],
     );
 
-    const hotelId =
-      hotel.rows[0]?.id ??
-      (
-        await client.query<{ id: string }>(
-          `select id from public.hotels where name = 'T_Hotel Da Nang' limit 1`,
-        )
-      ).rows[0].id;
+    const hotel = await client.query<{ id: string }>(
+      'select id from public.hotels where name = $1 and city = $2 limit 1',
+      [HOTEL.name, HOTEL.city],
+    );
+    const hotelId = hotel.rows[0].id;
 
     const roomTypeSpecs = [
       { code: 'single', name: 'Phong don', capacity: 1, basePriceCents: 60_000_00 },
