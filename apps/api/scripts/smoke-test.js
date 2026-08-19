@@ -125,7 +125,7 @@ async function main() {
   const cancelled = await call('POST', `/bookings/${created.body?.id}/cancel`, {
     token: customerToken,
   });
-  check('POST /bookings/:id/cancel -> 201', cancelled.status, 201);
+  check('POST /bookings/:id/cancel -> 200', cancelled.status, 200);
   check('  status = cancelled', cancelled.body?.status, 'cancelled');
 
   const reBooked = await call('POST', '/bookings', {

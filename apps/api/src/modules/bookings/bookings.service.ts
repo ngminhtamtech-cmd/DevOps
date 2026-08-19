@@ -142,22 +142,32 @@ export class BookingsService {
   /**
    * Huy booking. Sau khi status = 'cancelled', menh de WHERE cua exclusion
    * constraint khong con ap dung nen khoang ngay do lap tuc mo lai cho khach khac.
+   *
+   * Dieu kien `status <> 'cancelled'` nam ngay trong cau UPDATE chu khong phai o
+   * mot buoc kiem tra rieng truoc do: hai request huy song song se cung doc thay
+   * 'confirmed' roi cung chay nhanh ghi. Hien tai ghi hai lan chi la thua, nhung
+   * khi giai doan sau gan hoan tien vao day thi do la hoan tien hai lan.
+   * Postgres khoa hang trong UPDATE, nen dung mot request nhan duoc hang tra ve.
    */
   async cancel(id: string, user: AuthenticatedUser): Promise<Booking> {
-    const existing = await this.findByIdForUser(id, user);
-
-    if (existing.status === 'cancelled') {
-      return existing;
-    }
+    // Kiem tra ton tai va quyen truoc, de tra ve 404/403 dung nghia.
+    await this.findByIdForUser(id, user);
 
     const row = await this.database.queryOne<BookingRow>(
       `update public.bookings
        set status = 'cancelled', cancelled_at = now()
-       where id = $1
+       where id = $1 and status <> 'cancelled'
        returning ${BOOKING_COLUMNS}`,
       [id],
     );
-    return toBooking(row as BookingRow);
+    if (row) {
+      return toBooking(row);
+    }
+
+    // Khong co hang tra ve = booking da bi huy tu truoc, hoac vua bi mot request
+    // song song huy xong. Huy lan hai khong phai loi. Doc lai de tra ve trang
+    // thai MOI NHAT, khong dung ban chup doc o dau ham (no van con 'confirmed').
+    return this.findByIdForUser(id, user);
   }
 
   private async findRoomTypeIdOrThrow(client: PoolClient, roomId: string): Promise<string> {

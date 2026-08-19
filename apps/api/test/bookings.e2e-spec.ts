@@ -160,7 +160,7 @@ describe('Luong dat phong (e2e)', () => {
     const cancelled = await request(app.getHttpServer())
       .post(`/api/bookings/${created.body.id}/cancel`)
       .set('Authorization', bearer(customer))
-      .expect(201);
+      .expect(200);
     expect(cancelled.body.status).toBe('cancelled');
     expect(cancelled.body.cancelledAt).not.toBeNull();
 
@@ -169,5 +169,27 @@ describe('Luong dat phong (e2e)', () => {
       .set('Authorization', bearer(createTestUser()))
       .send(validBooking())
       .expect(201);
+  });
+
+  it('huy hai lan dong thoi chi ghi cancelled_at mot lan', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/bookings')
+      .set('Authorization', bearer(customer))
+      .send(validBooking())
+      .expect(201);
+
+    const cancel = () =>
+      request(app.getHttpServer())
+        .post(`/api/bookings/${created.body.id}/cancel`)
+        .set('Authorization', bearer(customer));
+
+    const [first, second] = await Promise.all([cancel(), cancel()]);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.body.status).toBe('cancelled');
+    expect(second.body.status).toBe('cancelled');
+    // Ca hai deu tra ve cung mot moc thoi gian: chi mot request thuc su ghi.
+    expect(first.body.cancelledAt).toBe(second.body.cancelledAt);
   });
 });

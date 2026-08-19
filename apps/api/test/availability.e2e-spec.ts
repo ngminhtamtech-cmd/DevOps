@@ -84,7 +84,7 @@ describe('Kiem tra ton phong theo khoang ngay (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/bookings/${created.body.id}/cancel`)
       .set('Authorization', bearer(customer))
-      .expect(201);
+      .expect(200);
 
     const response = await request(app.getHttpServer())
       .get('/api/availability')
