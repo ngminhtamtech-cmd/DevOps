@@ -83,10 +83,17 @@ t-hotel/
 - API: CRUD phòng và loại phòng, rate plan theo mùa, tìm phòng trống theo khoảng ngày,
   đặt phòng, xem lịch sử, huỷ, health check.
 - Supabase Auth: xác minh JWT HS256, guard toàn cục mặc định đóng, role trong `public.profiles`.
-- Validation toàn cục (`whitelist` + `forbidNonWhitelisted`), map lỗi Postgres sang HTTP.
-- Test: **23 unit + 42 e2e** trên Postgres thật (`embedded-postgres`, không cần Docker),
+- Validation toàn cục (`whitelist` + `forbidNonWhitelisted`), map lỗi Postgres sang HTTP
+  (`23505` → 409, `23503`/`23001` → 409 hoặc 400, `23P01` → 409). Không đặt phòng được cho
+  ngày đã qua. Migration runner giữ `pg_advisory_lock` nên nhiều instance cùng khởi động
+  không giẫm lên nhau.
+- Test: **26 unit + 59 e2e** trên Postgres thật (`embedded-postgres`, không cần Docker),
   gồm test đồng thời chứng minh R12 và `schema-guards.e2e-spec.ts` canh RLS + khoá ngoại
   ghép + tính idempotent của seed. Lint sạch, `npm run build` từ trạng thái sạch exit 0.
+  Test dùng **ngày tương đối** (`ngayTuHomNay`), không viết cứng ngày tháng — API từ chối
+  đặt phòng cho ngày đã qua nên ngày cố định sẽ làm bộ test hỏng theo thời gian.
+- Rate plan mùa cao điểm trong seed cũng đặt theo ngày tương đối (hôm nay +60, kéo dài 30
+  ngày) để bản demo luôn còn thấy giá theo mùa.
 - Smoke test HTTP thật: `node apps/api/scripts/smoke-test.js` (18 kiểm tra).
 - ADR 0001–0008 và `docs/giai-doan-1-khai-niem.md`.
 
@@ -104,11 +111,15 @@ Chưa xong / còn nợ:
   Supabase và `DATABASE_SSL=true`, rồi kiểm tra advisor bảo mật không còn cảnh báo
   "RLS disabled in public".
 - Chưa có `apps/web` — thuộc giai đoạn 2.
-- Nợ kỹ thuật đã ghi nhận, chưa làm (không chặn giai đoạn 2): không chặn đặt phòng cho ngày
-  quá khứ; migration runner chưa có advisory lock (cần trước giai đoạn 8 khi nhiều pod cùng
-  khởi động); `ROLLBACK` trong `DatabaseService.transaction` có thể che lỗi gốc; chưa có
-  `PATCH /room-types/:id`, sửa/xoá rate plan, `GET /bookings` cho admin, phân trang; chưa có
-  helmet / rate limit / structured log (giai đoạn 6, 10).
+- Nợ kỹ thuật còn lại, đều thuộc giai đoạn sau nên chưa làm theo R3:
+  - Endpoint cho trang admin giai đoạn 2: `PATCH /room-types/:id`, sửa và xoá rate plan,
+    `GET /bookings` cho admin xem toàn bộ, phân trang cho các endpoint danh sách.
+  - helmet, rate limit, structured JSON log, global exception filter (giai đoạn 6 và 10).
+  - `calculate_stay_price` trả 0 lặng lẽ khi `room_type_id` không tồn tại. Hiện không chạm
+    tới được qua API vì id luôn đọc từ hàng `rooms`; nếu giai đoạn 2 thêm luồng "đặt theo
+    loại phòng" thì phải xử lý trước, không thì sinh booking 0 đồng.
+  - Rate plan cùng `priority` và cùng `created_at` (chèn trong một transaction) thì thứ tự
+    không xác định — ADR 0006 nói "bản ghi tạo sau thắng", đúng đa số trường hợp.
 
 Việc tiếp theo (giai đoạn 2 — Full-stack):
 
