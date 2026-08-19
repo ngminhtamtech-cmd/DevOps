@@ -23,6 +23,12 @@ API lắng nghe ở `http://localhost:3001/api`.
 Database → Connection string → URI, thay `[YOUR-PASSWORD]`), `DATABASE_SSL=true`, và
 `SUPABASE_JWT_SECRET` lấy ở Project Settings → API Keys → JWT Keys. Sau đó `npm run db:migrate`.
 
+Migration `0002` bật Row Level Security cho mọi bảng trong `public` và **không** tạo policy
+nào. API kết nối bằng role chủ sở hữu nên chạy bình thường; PostgREST (anon key nằm công
+khai trong trình duyệt) thì bị chặn sạch. Xem `docs/adr/0007-bat-rls-tren-schema-public.md`.
+Sau khi migrate, kiểm tra advisor bảo mật của Supabase không còn cảnh báo
+"RLS disabled in public".
+
 ## Test
 
 ```bash
