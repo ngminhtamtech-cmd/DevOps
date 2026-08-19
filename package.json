@@ -1,0 +1,23 @@
+{
+  "name": "t-hotel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "T_Hotel - he thong dat phong khach san (monorepo)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspaces --if-present",
+    "api:dev": "npm run start:dev --workspace @t-hotel/api",
+    "db:local": "npm run db:local --workspace @t-hotel/api",
+    "db:migrate": "npm run db:migrate --workspace @t-hotel/api",
+    "db:seed": "npm run db:seed --workspace @t-hotel/api"
+  }
+}

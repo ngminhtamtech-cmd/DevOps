@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.npm/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets (R6)
+.env
+.env.*
+!.env.example
+
+# test artifacts
+coverage/
+.jest-cache/
+.tmp-pg/
+.local-pg/
+pgdata/
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
