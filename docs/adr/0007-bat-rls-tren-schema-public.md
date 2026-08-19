@@ -53,3 +53,14 @@ không bị hở.
   chưa bật, nên không cần trông vào trí nhớ.
 - Sau khi áp schema lên Supabase, chạy advisor bảo mật để xác nhận không còn cảnh báo
   "RLS disabled in public".
+
+## Kiểm chứng trên Supabase (2026-08-19)
+
+Đã áp lên project `daxypokemqsscrradlqr`. Advisor bảo mật: **không còn
+`rls_disabled_in_public`**. Thay vào đó là 7 dòng `rls_enabled_no_policy` ở mức **INFO** —
+đúng bằng số bảng, và đúng là trạng thái mà ADR này chọn.
+
+Cảnh báo đó nói "bật RLS mà không có policy nào thì không ai đọc được gì". Với kiến trúc
+client → API → database của T_Hotel thì đó chính là điều mong muốn: API kết nối bằng role
+chủ sở hữu nên không bị ảnh hưởng, còn PostgREST thì phải bị chặn. Nếu sau này có màn hình
+nào gọi thẳng Supabase từ trình duyệt, lúc đó mới cần viết policy cho đúng bảng đó.

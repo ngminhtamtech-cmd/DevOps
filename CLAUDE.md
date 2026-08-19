@@ -76,9 +76,11 @@ t-hotel/
 - Schema Postgres: `hotels`, `room_types`, `rooms`, `rate_plans`, `profiles`, `bookings`.
   Chống double-booking bằng exclusion constraint GiST trên `daterange` nửa mở `[)`, có
   `WHERE status <> 'cancelled'`. Giá theo mùa tính bằng hàm SQL `calculate_stay_price`.
-- Migration `0001_init` → `0002_bat_rls` → `0003_room_type_cung_khach_san`.
-  RLS bật cho cả bảy bảng của `public`, không policy nào (ADR 0007). Khoá ngoại ghép buộc
-  phòng dùng loại phòng của chính khách sạn nó thuộc về (ADR 0008).
+- Migration `0001_init` → `0002_bat_rls` → `0003_room_type_cung_khach_san` →
+  `0004_co_dinh_search_path`. RLS bật cho cả bảy bảng của `public`, không policy nào
+  (ADR 0007). Khoá ngoại ghép buộc phòng dùng loại phòng của chính khách sạn nó thuộc về
+  (ADR 0008). Hàm `calculate_stay_price` cố định `search_path = ''` để không bị chiếm
+  quyền qua schema giả.
 - Migration runner tự viết (file `.sql` đánh số + bảng `schema_migrations` có checksum).
 - API: CRUD phòng và loại phòng, rate plan theo mùa, tìm phòng trống theo khoảng ngày,
   đặt phòng, xem lịch sử, huỷ, health check.
@@ -87,7 +89,7 @@ t-hotel/
   (`23505` → 409, `23503`/`23001` → 409 hoặc 400, `23P01` → 409). Không đặt phòng được cho
   ngày đã qua. Migration runner giữ `pg_advisory_lock` nên nhiều instance cùng khởi động
   không giẫm lên nhau.
-- Test: **26 unit + 59 e2e** trên Postgres thật (`embedded-postgres`, không cần Docker),
+- Test: **26 unit + 60 e2e** trên Postgres thật (`embedded-postgres`, không cần Docker),
   gồm test đồng thời chứng minh R12 và `schema-guards.e2e-spec.ts` canh RLS + khoá ngoại
   ghép + tính idempotent của seed. Lint sạch, `npm run build` từ trạng thái sạch exit 0.
   Test dùng **ngày tương đối** (`ngayTuHomNay`), không viết cứng ngày tháng — API từ chối
@@ -101,15 +103,38 @@ Git: repo đã init, remote `origin` là `github.com/ngminhtamtech-cmd/DevOps.gi
 push. Ba worktree cho việc đang làm: `fix/stage-1-hardening`, `chore/stage-2-supabase`,
 `feat/stage-2-web` (`worktrees/`).
 
+## Supabase (Track A)
+
+**Schema đã được áp lên project `daxypokemqsscrradlqr`** (tên hiển thị "Lich-trinh",
+region ap-south-1, Postgres 17.6), ngày 2026-08-19. Project này lúc đó hoàn toàn trống —
+0 bảng, 0 migration.
+
+Lưu ý: `.env` trước đó trỏ tới ref `lgkasgosvvmdmltzpgsk`, nhưng ref đó **không nằm trong
+tài khoản Supabase đang dùng** nên không truy cập được. Nếu project cũ đó thực sự tồn tại ở
+một tài khoản khác, cần quyết định giữ cái nào rồi sửa `.env` cho khớp.
+
+Migration được áp qua Supabase MCP (không cần database password) và ghi vào
+`public.schema_migrations` kèm checksum, nên `npm run db:migrate` trỏ về đây sẽ báo
+"bỏ qua 4 migration đã có" chứ không chạy lại.
+
+Kết quả advisor bảo mật sau khi áp:
+
+- **Không còn `rls_disabled_in_public`** — lỗ hổng nghiêm trọng nhất đã đóng.
+- `rls_enabled_no_policy` × 7, mức INFO: đúng thiết kế của ADR 0007 (bật RLS, không policy).
+- `extension_in_public` (WARN) cho `btree_gist`: **cố ý không sửa.** Chuyển extension sang
+  schema riêng sẽ khiến migration phải tạo thêm schema và quản lý `search_path` trên cả ba
+  môi trường (test, dev, Supabase), và các exclusion constraint GiST viết sau này sẽ hỏng
+  một cách khó hiểu nếu quên. Đổi một cảnh báo mức WARN lấy một cái bẫy thật là không đáng.
+- `anon_security_definer_function_executable` (WARN) cho `public.rls_auto_enable()`:
+  **hàm này không thuộc T_Hotel**, nó đã có sẵn trong project từ trước. Nó là SECURITY
+  DEFINER và gọi được bằng anon key qua `/rest/v1/rpc/rls_auto_enable`. Cần xem lại nguồn
+  gốc rồi `revoke execute ... from anon, authenticated` hoặc xoá hẳn.
+
 Chưa xong / còn nợ:
 
-- **Schema chưa được áp lên Supabase project thật.** `.env` đang trỏ tới project ref
-  `lgkasgosvvmdmltzpgsk`, nhưng tài khoản Supabase kết nối qua MCP không thấy project này
-  (chỉ thấy `daxypokemqsscrradlqr` / "Lich-trinh") — cần user xác nhận project còn tồn tại
-  và thuộc tài khoản nào. Ngoài ra vẫn thiếu database password (Dashboard → Project
-  Settings → Database). Lệnh cần chạy: `npm run db:migrate` với `DATABASE_URL` trỏ về
-  Supabase và `DATABASE_SSL=true`, rồi kiểm tra advisor bảo mật không còn cảnh báo
-  "RLS disabled in public".
+- Chưa seed dữ liệu mẫu lên Supabase. Cần database password (Dashboard → Project Settings →
+  Database), rồi `npm run db:seed` với `DATABASE_URL` trỏ về Supabase và `DATABASE_SSL=true`.
+- Chưa tạo tài khoản test và gán một tài khoản làm admin.
 - Chưa có `apps/web` — thuộc giai đoạn 2.
 - Nợ kỹ thuật còn lại, đều thuộc giai đoạn sau nên chưa làm theo R3:
   - Endpoint cho trang admin giai đoạn 2: `PATCH /room-types/:id`, sửa và xoá rate plan,
