@@ -65,36 +65,56 @@ t-hotel/
 ## Trạng thái
 
 **Giai đoạn 1 — REST API: gate đã pass** (2026-08-19).
+**Đã review toàn bộ và vá xong các lỗ hổng chặn giai đoạn 2** (2026-08-19, nhánh
+`fix/stage-1-hardening`).
 
 Đã có:
 
 - Monorepo npm workspaces: `apps/api` (NestJS), `packages/shared-types`.
+  Thứ tự `workspaces` là `packages/*` trước `apps/*` — npm chạy đúng thứ tự liệt kê, đảo lại
+  thì bản clone sạch build hỏng (ADR 0001).
 - Schema Postgres: `hotels`, `room_types`, `rooms`, `rate_plans`, `profiles`, `bookings`.
   Chống double-booking bằng exclusion constraint GiST trên `daterange` nửa mở `[)`, có
   `WHERE status <> 'cancelled'`. Giá theo mùa tính bằng hàm SQL `calculate_stay_price`.
+- Migration `0001_init` → `0002_bat_rls` → `0003_room_type_cung_khach_san`.
+  RLS bật cho cả bảy bảng của `public`, không policy nào (ADR 0007). Khoá ngoại ghép buộc
+  phòng dùng loại phòng của chính khách sạn nó thuộc về (ADR 0008).
 - Migration runner tự viết (file `.sql` đánh số + bảng `schema_migrations` có checksum).
 - API: CRUD phòng và loại phòng, rate plan theo mùa, tìm phòng trống theo khoảng ngày,
   đặt phòng, xem lịch sử, huỷ, health check.
 - Supabase Auth: xác minh JWT HS256, guard toàn cục mặc định đóng, role trong `public.profiles`.
 - Validation toàn cục (`whitelist` + `forbidNonWhitelisted`), map lỗi Postgres sang HTTP.
-- Test: 23 unit + 34 e2e trên Postgres thật (`embedded-postgres`, không cần Docker),
-  gồm test đồng thời chứng minh R12. Lint sạch.
-- Smoke test HTTP thật: 18/18 pass trên server đang chạy.
-- ADR 0001–0006 và `docs/giai-doan-1-khai-niem.md`.
+- Test: **23 unit + 42 e2e** trên Postgres thật (`embedded-postgres`, không cần Docker),
+  gồm test đồng thời chứng minh R12 và `schema-guards.e2e-spec.ts` canh RLS + khoá ngoại
+  ghép + tính idempotent của seed. Lint sạch, `npm run build` từ trạng thái sạch exit 0.
+- Smoke test HTTP thật: `node apps/api/scripts/smoke-test.js` (18 kiểm tra).
+- ADR 0001–0008 và `docs/giai-doan-1-khai-niem.md`.
+
+Git: repo đã init, remote `origin` là `github.com/ngminhtamtech-cmd/DevOps.git`, `main` đã
+push. Ba worktree cho việc đang làm: `fix/stage-1-hardening`, `chore/stage-2-supabase`,
+`feat/stage-2-web` (`worktrees/`).
 
 Chưa xong / còn nợ:
 
-- **Schema chưa được áp lên Supabase project thật** (`lgkasgosvvmdmltzpgsk`). Thiếu database
-  password — chỉ user lấy được ở Dashboard → Project Settings → Database. Lệnh cần chạy:
-  `npm run db:migrate` với `DATABASE_URL` trỏ về Supabase và `DATABASE_SSL=true`.
-- Chưa `git init` (R7 không cho tự push; repo khởi tạo khi user đồng ý).
+- **Schema chưa được áp lên Supabase project thật.** `.env` đang trỏ tới project ref
+  `lgkasgosvvmdmltzpgsk`, nhưng tài khoản Supabase kết nối qua MCP không thấy project này
+  (chỉ thấy `daxypokemqsscrradlqr` / "Lich-trinh") — cần user xác nhận project còn tồn tại
+  và thuộc tài khoản nào. Ngoài ra vẫn thiếu database password (Dashboard → Project
+  Settings → Database). Lệnh cần chạy: `npm run db:migrate` với `DATABASE_URL` trỏ về
+  Supabase và `DATABASE_SSL=true`, rồi kiểm tra advisor bảo mật không còn cảnh báo
+  "RLS disabled in public".
 - Chưa có `apps/web` — thuộc giai đoạn 2.
+- Nợ kỹ thuật đã ghi nhận, chưa làm (không chặn giai đoạn 2): không chặn đặt phòng cho ngày
+  quá khứ; migration runner chưa có advisory lock (cần trước giai đoạn 8 khi nhiều pod cùng
+  khởi động); `ROLLBACK` trong `DatabaseService.transaction` có thể che lỗi gốc; chưa có
+  `PATCH /room-types/:id`, sửa/xoá rate plan, `GET /bookings` cho admin, phân trang; chưa có
+  helmet / rate limit / structured log (giai đoạn 6, 10).
 
 Việc tiếp theo (giai đoạn 2 — Full-stack):
 
-1. Áp migration lên Supabase, tạo tài khoản test, gán một tài khoản làm admin.
+1. Xác nhận project Supabase, áp migration, tạo tài khoản test, gán một tài khoản làm admin.
 2. Scaffold `apps/web` bằng Next.js, đăng nhập qua Supabase Auth client.
 3. Trang tìm phòng trống, đặt phòng, lịch sử đặt phòng.
-4. Trang admin quản lý phòng và giá theo mùa.
+4. Trang admin quản lý phòng và giá theo mùa (cần bổ sung các endpoint còn thiếu ở trên).
 
 Cập nhật mục này sau mỗi giai đoạn theo R4.
