@@ -58,7 +58,16 @@ export class DatabaseService implements OnModuleDestroy {
       await client.query('COMMIT');
       return result;
     } catch (error) {
-      await client.query('ROLLBACK');
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        // Ket noi co the da dut — chinh la ly do transaction that bai. Neu de
+        // loi cua ROLLBACK noi len, no se THAY THE loi goc va tang tren mat
+        // hoan toan manh moi thuc su can biet (vi du 23P01 cua double-booking).
+        const message =
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+        this.logger.error(`ROLLBACK that bai, giu nguyen loi goc de ném len: ${message}`);
+      }
       throw error;
     } finally {
       client.release();

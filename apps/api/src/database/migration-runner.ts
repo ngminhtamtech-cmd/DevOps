@@ -19,6 +19,12 @@ export interface RunMigrationsOptions {
 export const DEFAULT_MIGRATIONS_DIR = join(__dirname, 'migrations');
 
 /**
+ * Khoa tu van (advisory lock) dung rieng cho viec chay migration. Con so chi can
+ * duy nhat trong pham vi database; no khong gan voi bang nao.
+ */
+const MIGRATION_LOCK_ID = 48231207;
+
+/**
  * Migration runner toi gian: doc cac file .sql theo thu tu ten, chay file nao
  * chua co trong bang schema_migrations, moi file trong mot transaction rieng.
  *
@@ -38,6 +44,13 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<Migr
   const result: MigrationResult = { applied: [], skipped: [] };
 
   try {
+    // Chi mot tien trinh duoc chay migration tai mot thoi diem. Tu giai doan 8
+    // (nhieu pod cung khoi dong) hai instance se cung goi ham nay; khong co khoa
+    // thi ca hai cung thay migration chua chay va cung thuc thi no.
+    // pg_advisory_lock CHO cho toi khi lay duoc khoa, va khoa tu nha khi
+    // connection dong — ke ca khi tien trinh chet giua chung.
+    await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
+
     await client.query(`
       create table if not exists public.schema_migrations (
         filename    text primary key,
