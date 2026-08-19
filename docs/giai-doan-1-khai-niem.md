@@ -97,3 +97,42 @@ theo đúng thứ tự. Bảng `schema_migrations` ghi lại file nào đã ch�
 **Chỗ dễ vấp.** Sửa nội dung một migration đã chạy là cái bẫy phổ biến nhất: máy mình không
 thấy gì lạ (file đã đánh dấu là chạy rồi), còn database mới lại có schema khác. Vì thế runner
 lưu checksum SHA-256 và **báo lỗi** nếu file đổi nội dung — bắt buộc phải tạo migration mới.
+
+---
+
+## 7. Row Level Security (RLS)
+
+**Là gì.** Quyền thông thường của SQL (`GRANT`) nói "role này được đọc **bảng** kia". RLS
+nói mịn hơn một bậc: "role này được đọc **những hàng nào** của bảng kia". Bật RLS lên một
+bảng là mặc định **cấm hết**, rồi mở lại từng phần bằng các `POLICY`.
+
+**Vì sao dự án cần.** Trên Supabase, mọi bảng trong schema `public` được PostgREST tự động
+xuất bản ra Internet, và anon key thì nằm công khai trong mã nguồn trình duyệt của
+`apps/web`. Không bật RLS thì bất kỳ ai cũng gọi thẳng được
+`PATCH /rest/v1/profiles` để tự đặt `role = admin`, và toàn bộ phân quyền của API sụp đổ mà
+không ai chạm vào API. T_Hotel bật RLS cho cả bảy bảng và **không viết policy nào** — xem
+ADR 0007.
+
+**Chỗ dễ vấp.** Hai điểm:
+
+- **Chủ sở hữu bảng được miễn RLS.** API kết nối bằng role `postgres` (chủ sở hữu) nên chạy
+  y như cũ — đó chính là điều làm phương án "bật RLS, không viết policy" hoạt động. Mặt trái:
+  nếu sau này đổi sang một role thường mà quên viết policy, truy vấn sẽ trả về **rỗng chứ
+  không báo lỗi**. Im lặng khó debug hơn hẳn một thông báo đỏ.
+- **Bật RLS không tự thu hồi `GRANT`**, và ngược lại. Đó là hai lớp khác nhau, phải nghĩ
+  tách bạch.
+
+---
+
+## 8. Khoá ngoại ghép (composite foreign key)
+
+**Là gì.** Khoá ngoại thông thường ràng buộc một cột. Khoá ngoại ghép ràng buộc **một bộ
+cột phải cùng tồn tại thành một hàng** ở bảng được tham chiếu.
+
+**Vì sao dự án cần.** `rooms` mang cả `hotel_id` lẫn `room_type_id`. Ràng buộc từng cột
+riêng lẻ vẫn cho phép một phòng của khách sạn A dùng loại phòng của khách sạn B — và truy
+vấn tìm phòng trống sẽ trả về giá của khách sạn B. Xem ADR 0008.
+
+**Chỗ dễ vấp.** Postgres đòi phía được tham chiếu có ràng buộc `UNIQUE` trên **đúng cặp
+cột** được tham chiếu. Vì thế `room_types` phải thêm `unique (id, hotel_id)` dù `id` đã là
+khoá chính — nhìn thừa nhưng không có nó thì không tạo được khoá ngoại ghép.

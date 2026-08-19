@@ -38,10 +38,32 @@ export async function resetDatabase(database: DatabaseService): Promise<void> {
   );
 }
 
+/**
+ * Ngay ISO cach hom nay `soNgay` ngay, tinh theo UTC.
+ *
+ * Test dung ngay TUONG DOI chu khong phai ngay co dinh: API tu choi dat phong
+ * cho ngay da qua, nen mot ngay viet cung trong test se bien thanh qua khu roi
+ * lam do bo test vao mot ngay nao do trong tuong lai — loai hong khong ai gay
+ * ra ma rat mat cong tim.
+ */
+export function ngayTuHomNay(soNgay: number): string {
+  const ngay = new Date();
+  ngay.setUTCDate(ngay.getUTCDate() + soNgay);
+  return ngay.toISOString().slice(0, 10);
+}
+
+/** Ngay ISO cach `ngayGoc` mot so ngay. Dung cho khoang ngay doc tu rate plan. */
+export function themNgay(ngayGoc: string, soNgay: number): string {
+  const ngay = new Date(`${ngayGoc}T00:00:00Z`);
+  ngay.setUTCDate(ngay.getUTCDate() + soNgay);
+  return ngay.toISOString().slice(0, 10);
+}
+
 export interface Fixtures {
   hotelId: string;
   roomTypeIds: Record<string, string>;
   roomIds: string[];
+  muaCaoDiem: { startDate: string; endDate: string; priceCents: number };
   /** Phong doi dau tien — dung cho phan lon test dat phong. */
   doubleRoomId: string;
 }

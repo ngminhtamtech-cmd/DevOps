@@ -60,6 +60,27 @@ export function countNights(checkIn: string, checkOut: string): number {
 
 export const MAX_STAY_NIGHTS = 30;
 
+/** Hom nay theo UTC, dang `YYYY-MM-DD`. */
+export function homNayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Chan dat phong cho ngay da qua.
+ *
+ * Chi ap dung luc TAO booking, khong ap dung cho truy van tim phong trong: xem
+ * lai gia va tinh trang cua mot khoang ngay trong qua khu la viec hop le.
+ *
+ * Moc so sanh la ngay UTC. Khach o UTC+7 dat luc 00:30 ngay D se duoc chap nhan
+ * du UTC con dang o ngay D-1 — le ve phia de dai, dung huong voi mot he thong
+ * dat phong (tu choi nham mot don hop le te hon la nhan mot don le mot ngay).
+ */
+export function assertCheckInKhongThuocQuaKhu(checkIn: string): void {
+  if (checkIn < homNayIso()) {
+    throw new BadRequestException('Khong the dat phong cho ngay da qua');
+  }
+}
+
 /**
  * Rang buoc nghiep vu chung cho moi endpoint co khoang ngay.
  * Database cung co check constraint tuong ung; kiem o day de tra loi 400 ro nghia

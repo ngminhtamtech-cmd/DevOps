@@ -6,6 +6,7 @@ import {
   createTestApp,
   createTestUser,
   Fixtures,
+  ngayTuHomNay,
   resetDatabase,
   seedFixtures,
 } from './utils/test-app';
@@ -57,7 +58,7 @@ describe('Chong double-booking (e2e)', () => {
       .set('Authorization', bearer(secondUser))
       .expect(200);
 
-    const payload = bookingPayload('2027-01-10', '2027-01-14');
+    const payload = bookingPayload(ngayTuHomNay(100), ngayTuHomNay(104));
 
     const responses = await Promise.all([
       request(app.getHttpServer())
@@ -82,7 +83,7 @@ describe('Chong double-booking (e2e)', () => {
   });
 
   it('nam request dong thoi cho cung phong: chi mot cai duoc ghi', async () => {
-    const payload = bookingPayload('2027-02-01', '2027-02-05');
+    const payload = bookingPayload(ngayTuHomNay(110), ngayTuHomNay(114));
 
     const responses = await Promise.all(
       Array.from({ length: 5 }, () =>
@@ -106,35 +107,35 @@ describe('Chong double-booking (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(user))
-      .send(bookingPayload('2027-03-10', '2027-03-15'))
+      .send(bookingPayload(ngayTuHomNay(130), ngayTuHomNay(135)))
       .expect(201);
 
     // Chong lan phan duoi
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-03-08', '2027-03-11'))
+      .send(bookingPayload(ngayTuHomNay(128), ngayTuHomNay(131)))
       .expect(409);
 
     // Chong lan phan tren
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-03-14', '2027-03-20'))
+      .send(bookingPayload(ngayTuHomNay(134), ngayTuHomNay(140)))
       .expect(409);
 
     // Nam gon ben trong
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-03-11', '2027-03-13'))
+      .send(bookingPayload(ngayTuHomNay(131), ngayTuHomNay(133)))
       .expect(409);
 
-    // Bao trum ben ngoai
+    // Bao trum ben ngoai (dung 30 dem, sat gioi han MAX_STAY_NIGHTS)
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-03-01', '2027-03-31'))
+      .send(bookingPayload(ngayTuHomNay(121), ngayTuHomNay(151)))
       .expect(409);
   });
 
@@ -142,19 +143,19 @@ describe('Chong double-booking (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-04-10', '2027-04-15'))
+      .send(bookingPayload(ngayTuHomNay(160), ngayTuHomNay(165)))
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-04-15', '2027-04-18'))
+      .send(bookingPayload(ngayTuHomNay(165), ngayTuHomNay(168)))
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(createTestUser()))
-      .send(bookingPayload('2027-04-07', '2027-04-10'))
+      .send(bookingPayload(ngayTuHomNay(157), ngayTuHomNay(160)))
       .expect(201);
   });
 
@@ -165,7 +166,7 @@ describe('Chong double-booking (e2e)', () => {
     const insert = `
       insert into public.bookings
         (room_id, user_id, guest_name, guest_email, check_in, check_out, total_price_cents, status)
-      values ($1, $2, 'A', 'a@example.com', '2027-05-01', '2027-05-05', 100, 'confirmed')
+      values ($1, $2, 'A', 'a@example.com', '${ngayTuHomNay(180)}'::date, '${ngayTuHomNay(184)}'::date, 100, 'confirmed')
     `;
 
     const errors: { code?: string }[] = [];

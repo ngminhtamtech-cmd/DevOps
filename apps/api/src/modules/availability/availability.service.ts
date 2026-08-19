@@ -86,17 +86,4 @@ export class AvailabilityService {
       totalPriceCents: Number(row.total_price_cents),
     }));
   }
-
-  /** Dung cho buoc kiem tra nhanh truoc khi tao booking. */
-  async isRoomFree(roomId: string, checkIn: string, checkOut: string): Promise<boolean> {
-    const row = await this.database.queryOne<{ conflicting: string }>(
-      `select count(*)::text as conflicting
-       from public.bookings
-       where room_id = $1
-         and status <> 'cancelled'
-         and daterange(check_in, check_out, '[)') && daterange($2::date, $3::date, '[)')`,
-      [roomId, checkIn, checkOut],
-    );
-    return Number(row?.conflicting ?? 0) === 0;
-  }
 }

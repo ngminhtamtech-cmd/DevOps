@@ -12,14 +12,43 @@
  */
 const path = require('node:path');
 const fs = require('node:fs');
+const net = require('node:net');
 
 const DATA_DIR = path.join(__dirname, '..', '.tmp-pg');
 const PORT = Number(process.env.TEST_PG_PORT || 55433);
 const CONNECTION_STRING = `postgresql://postgres:postgres@127.0.0.1:${PORT}/postgres`;
 
+/**
+ * Cong da co nguoi nghe chua? Neu mot postgres cu con sot lai tu lan chay truoc
+ * (vd. bi Ctrl+C giua chung), `start()` cua embedded-postgres se cho mai ma
+ * khong bao gi — test treo vo han thay vi that bai. Kiem tra truoc de doi cai
+ * treo do thanh mot thong bao doc duoc trong mot giay.
+ */
+function congDangBiChiem(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host: '127.0.0.1' });
+    const xong = (ketQua) => {
+      socket.destroy();
+      resolve(ketQua);
+    };
+    socket.setTimeout(1000);
+    socket.on('connect', () => xong(true));
+    socket.on('error', () => xong(false));
+    socket.on('timeout', () => xong(false));
+  });
+}
+
 module.exports = async function globalSetup() {
   const imported = require('embedded-postgres');
   const EmbeddedPostgres = imported.default || imported;
+
+  if (await congDangBiChiem(PORT)) {
+    throw new Error(
+      `Cong ${PORT} dang bi chiem — nhieu kha nang la mot postgres.exe con sot lai tu lan ` +
+        'chay test truoc. Tat no di (Windows: Get-Process postgres | Stop-Process -Force) ' +
+        `roi chay lai, hoac dat TEST_PG_PORT sang cong khac.`,
+    );
+  }
 
   // Cluster cu con sot lai tu lan chay truoc se lam initdb that bai.
   fs.rmSync(DATA_DIR, { recursive: true, force: true });
@@ -29,7 +58,11 @@ module.exports = async function globalSetup() {
     user: 'postgres',
     password: 'postgres',
     port: PORT,
-    persistent: false,
+    // `persistent: false` khien thu vien xoa thu muc du lieu NGAY sau khi tat
+    // postgres. Tren Windows viec do hay ném EBUSY vi handle chua duoc tra, va
+    // Jest bien loi don dep do thanh exit 1 du moi test da xanh. Giu du lieu lai
+    // va don o dau lan chay sau (fs.rmSync ngay tren) thi khong con canh tranh.
+    persistent: true,
     // Locale mac dinh cua may Windows tieng Viet la WIN1252, khong luu duoc
     // tieng Viet co dau. Ep UTF8 de test khop voi Supabase (cung UTF8).
     initdbFlags: ['--encoding=UTF8', '--locale=C'],

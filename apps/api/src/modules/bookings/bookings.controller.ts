@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import type { Booking } from '@t-hotel/shared-types';
 import type { AuthenticatedUser } from '../../auth/auth.types';
 import { CurrentUser } from '../../auth/decorators';
@@ -31,7 +40,9 @@ export class BookingsController {
     return this.bookings.findByIdForUser(id, user);
   }
 
+  // 200 chu khong phai 201 mac dinh cua POST: huy khong tao ra tai nguyen moi.
   @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
   cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,

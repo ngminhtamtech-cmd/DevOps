@@ -18,6 +18,13 @@ const secret = process.env.SUPABASE_JWT_SECRET;
 let passed = 0;
 let failed = 0;
 
+/** Ngay ISO cach hom nay `soNgay` ngay, tinh theo UTC. */
+function ngayTuHomNay(soNgay) {
+  const ngay = new Date();
+  ngay.setUTCDate(ngay.getUTCDate() + soNgay);
+  return ngay.toISOString().slice(0, 10);
+}
+
 function devToken(userId) {
   return sign({ sub: userId, email: `smoke-${userId.slice(0, 8)}@example.com` }, secret, {
     algorithm: 'HS256',
@@ -71,8 +78,10 @@ async function main() {
   });
   check('POST /hotels bang customer -> 403', forbidden.status, 403);
 
-  const checkIn = '2027-08-01';
-  const checkOut = '2027-08-04';
+  // Ngay tuong doi: API tu choi dat phong cho ngay da qua, nen ngay viet cung
+  // trong script se lam smoke test hong sau vai thang.
+  const checkIn = ngayTuHomNay(200);
+  const checkOut = ngayTuHomNay(203);
   const availability = await call(
     'GET',
     `/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=2`,
@@ -114,7 +123,7 @@ async function main() {
 
   const adjacent = await call('POST', '/bookings', {
     token: devToken(randomUUID()),
-    body: { ...bookingBody, checkIn: checkOut, checkOut: '2027-08-07' },
+    body: { ...bookingBody, checkIn: checkOut, checkOut: ngayTuHomNay(206) },
   });
   check('POST /bookings nhan phong dung ngay tra phong -> 201', adjacent.status, 201);
 
@@ -125,7 +134,7 @@ async function main() {
   const cancelled = await call('POST', `/bookings/${created.body?.id}/cancel`, {
     token: customerToken,
   });
-  check('POST /bookings/:id/cancel -> 201', cancelled.status, 201);
+  check('POST /bookings/:id/cancel -> 200', cancelled.status, 200);
   check('  status = cancelled', cancelled.body?.status, 'cancelled');
 
   const reBooked = await call('POST', '/bookings', {
