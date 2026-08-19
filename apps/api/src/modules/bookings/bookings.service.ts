@@ -8,7 +8,7 @@ import {
 import type { Booking, BookingStatus } from '@t-hotel/shared-types';
 import type { PoolClient } from 'pg';
 import type { AuthenticatedUser } from '../../auth/auth.types';
-import { assertValidStayRange } from '../../common/iso-date';
+import { assertCheckInKhongThuocQuaKhu, assertValidStayRange } from '../../common/iso-date';
 import { isPostgresError, PG_ERROR } from '../../common/postgres-errors';
 import { DatabaseService } from '../../database/database.service';
 import { CreateBookingDto } from './dto';
@@ -72,6 +72,7 @@ export class BookingsService {
    */
   async create(dto: CreateBookingDto, user: AuthenticatedUser): Promise<Booking> {
     assertValidStayRange(dto.checkIn, dto.checkOut);
+    assertCheckInKhongThuocQuaKhu(dto.checkIn);
 
     try {
       return await this.database.transaction(async (client) => {

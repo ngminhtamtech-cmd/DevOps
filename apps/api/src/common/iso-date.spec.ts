@@ -1,5 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
-import { assertValidStayRange, countNights, isIsoDateString, MAX_STAY_NIGHTS } from './iso-date';
+import {
+  assertCheckInKhongThuocQuaKhu,
+  assertValidStayRange,
+  countNights,
+  homNayIso,
+  isIsoDateString,
+  MAX_STAY_NIGHTS,
+} from './iso-date';
+
+function ngayTuHomNay(soNgay: number): string {
+  const ngay = new Date();
+  ngay.setUTCDate(ngay.getUTCDate() + soNgay);
+  return ngay.toISOString().slice(0, 10);
+}
 
 describe('isIsoDateString', () => {
   it.each(['2026-01-01', '2026-12-31', '2028-02-29'])('chap nhan ngay hop le %s', (value) => {
@@ -56,5 +69,23 @@ describe('assertValidStayRange', () => {
     expect(() => assertValidStayRange('2026-10-01', '2026-11-05')).toThrow(BadRequestException);
     // Dung bang gioi han thi van chap nhan
     expect(assertValidStayRange('2026-10-01', '2026-10-31')).toBe(MAX_STAY_NIGHTS);
+  });
+});
+
+describe('assertCheckInKhongThuocQuaKhu', () => {
+  it('tu choi ngay truoc hom nay', () => {
+    expect(() => assertCheckInKhongThuocQuaKhu(ngayTuHomNay(-1))).toThrow(BadRequestException);
+    expect(() => assertCheckInKhongThuocQuaKhu('2020-01-01')).toThrow(BadRequestException);
+  });
+
+  it('chap nhan hom nay va tuong lai', () => {
+    expect(() => assertCheckInKhongThuocQuaKhu(homNayIso())).not.toThrow();
+    expect(() => assertCheckInKhongThuocQuaKhu(ngayTuHomNay(1))).not.toThrow();
+    expect(() => assertCheckInKhongThuocQuaKhu(ngayTuHomNay(365))).not.toThrow();
+  });
+
+  it('homNayIso tra ve dung dinh dang YYYY-MM-DD', () => {
+    expect(homNayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(isIsoDateString(homNayIso())).toBe(true);
   });
 });

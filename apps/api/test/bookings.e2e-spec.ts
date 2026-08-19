@@ -6,6 +6,7 @@ import {
   createTestApp,
   createTestUser,
   Fixtures,
+  ngayTuHomNay,
   promoteToAdmin,
   resetDatabase,
   seedFixtures,
@@ -32,10 +33,13 @@ describe('Luong dat phong (e2e)', () => {
     customer = createTestUser();
   });
 
+  const NHAN_PHONG = ngayTuHomNay(10);
+  const TRA_PHONG = ngayTuHomNay(13);
+
   const validBooking = (overrides: Record<string, unknown> = {}) => ({
     roomId: fixtures.doubleRoomId,
-    checkIn: '2026-12-01',
-    checkOut: '2026-12-04',
+    checkIn: NHAN_PHONG,
+    checkOut: TRA_PHONG,
     guestName: 'Nguyen Van A',
     guestEmail: 'a@example.com',
     ...overrides,
@@ -56,8 +60,8 @@ describe('Luong dat phong (e2e)', () => {
       // phong doi: 95.000 xu/dem x 3 dem
       totalPriceCents: 3 * 95_000_00,
     });
-    expect(response.body.checkIn).toBe('2026-12-01');
-    expect(response.body.checkOut).toBe('2026-12-04');
+    expect(response.body.checkIn).toBe(NHAN_PHONG);
+    expect(response.body.checkOut).toBe(TRA_PHONG);
   });
 
   it('bat buoc dang nhap (401)', async () => {
@@ -65,10 +69,11 @@ describe('Luong dat phong (e2e)', () => {
   });
 
   it('tu choi ngay khong hop le va email sai dinh dang (400)', async () => {
+    // Ngay tra phong trung ngay nhan phong = khong co dem nao.
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(customer))
-      .send(validBooking({ checkOut: '2026-12-01' }))
+      .send(validBooking({ checkOut: NHAN_PHONG }))
       .expect(400);
 
     await request(app.getHttpServer())
@@ -77,11 +82,30 @@ describe('Luong dat phong (e2e)', () => {
       .send(validBooking({ guestEmail: 'khong-phai-email' }))
       .expect(400);
 
+    // Dai hon gioi han 30 dem moi lan dat.
     await request(app.getHttpServer())
       .post('/api/bookings')
       .set('Authorization', bearer(customer))
-      .send(validBooking({ checkIn: '2026-12-01', checkOut: '2027-06-01' }))
+      .send(validBooking({ checkIn: ngayTuHomNay(10), checkOut: ngayTuHomNay(60) }))
       .expect(400);
+  });
+
+  it('tu choi dat phong cho ngay da qua (400)', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/bookings')
+      .set('Authorization', bearer(customer))
+      .send(validBooking({ checkIn: ngayTuHomNay(-3), checkOut: ngayTuHomNay(-1) }))
+      .expect(400);
+
+    expect(response.body.message).toContain('ngay da qua');
+  });
+
+  it('cho phep dat phong bat dau ngay hom nay', async () => {
+    await request(app.getHttpServer())
+      .post('/api/bookings')
+      .set('Authorization', bearer(customer))
+      .send(validBooking({ checkIn: ngayTuHomNay(0), checkOut: ngayTuHomNay(2) }))
+      .expect(201);
   });
 
   it('tra 404 khi phong khong ton tai', async () => {
