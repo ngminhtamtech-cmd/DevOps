@@ -61,6 +61,26 @@ describe('Rang buoc o tang schema (e2e)', () => {
       );
       expect(rows).toEqual([]);
     });
+
+    it('ham SQL cua du an co search_path co dinh, khong an theo nguoi goi', async () => {
+      // Loai cac ham do extension cai vao public (btree_gist mang theo hang chuc
+      // ham): chung khong phai code cua du an va khong sua duoc.
+      const rows = await database.query<{ proname: string; proconfig: string[] | null }>(
+        `select p.proname, p.proconfig
+         from pg_proc p
+         where p.pronamespace = 'public'::regnamespace
+           and p.prokind = 'f'
+           and not exists (
+             select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e'
+           )`,
+      );
+
+      expect(rows.length).toBeGreaterThan(0);
+      const thieuSearchPath = rows
+        .filter((row) => !(row.proconfig ?? []).some((cau) => cau.startsWith('search_path=')))
+        .map((row) => row.proname);
+      expect(thieuSearchPath).toEqual([]);
+    });
   });
 
   describe('Loai phong phai cung khach san voi phong', () => {
