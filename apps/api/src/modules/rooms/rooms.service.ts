@@ -138,8 +138,12 @@ export class RoomsService {
       }
     } catch (error) {
       // rooms bi bookings tham chieu voi on delete restrict: khong cho xoa phong
-      // da tung co booking, tranh mat lich su dat phong.
-      if (isPostgresError(error, PG_ERROR.FOREIGN_KEY_VIOLATION)) {
+      // da tung co booking, tranh mat lich su dat phong. `restrict` ném 23001
+      // chu khong phai 23503 — bat thieu ma nay thi API tra 500 thay vi 409.
+      if (
+        isPostgresError(error, PG_ERROR.RESTRICT_VIOLATION) ||
+        isPostgresError(error, PG_ERROR.FOREIGN_KEY_VIOLATION)
+      ) {
         throw new ConflictException(
           'Phong da co booking nen khong the xoa. Hay doi status sang "maintenance".',
         );
@@ -148,7 +152,7 @@ export class RoomsService {
     }
   }
 
-  private translateWriteError(error: unknown, roomNumber?: string): unknown {
+  private translateWriteError(error: unknown, roomNumber?: string): Error {
     if (isPostgresError(error, PG_ERROR.UNIQUE_VIOLATION)) {
       return new ConflictException(`Khach san nay da co phong so ${roomNumber}`);
     }
@@ -159,6 +163,6 @@ export class RoomsService {
         'hotelId hoac roomTypeId khong ton tai, hoac loai phong khong thuoc khach san nay',
       );
     }
-    return error;
+    return error instanceof Error ? error : new Error(String(error));
   }
 }

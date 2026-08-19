@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+﻿import { Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { ROOM_STATUSES } from '@t-hotel/shared-types';
+import { ROOM_STATUSES, RoomStatus } from '@t-hotel/shared-types';
 
 export class CreateRoomDto {
   @IsUUID()
@@ -33,7 +33,7 @@ export class CreateRoomDto {
 
   @IsOptional()
   @IsIn(ROOM_STATUSES as unknown as string[])
-  status?: string;
+  status?: RoomStatus;
 }
 
 export class UpdateRoomDto {
@@ -55,7 +55,7 @@ export class UpdateRoomDto {
 
   @IsOptional()
   @IsIn(ROOM_STATUSES as unknown as string[])
-  status?: string;
+  status?: RoomStatus;
 }
 
 export class ListRoomsQueryDto {
@@ -69,5 +69,6 @@ export class ListRoomsQueryDto {
 
   @IsOptional()
   @IsIn(ROOM_STATUSES as unknown as string[])
-  status?: string;
+  status?: RoomStatus;
 }
+

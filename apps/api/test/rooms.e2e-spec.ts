@@ -6,6 +6,7 @@ import {
   createTestApp,
   createTestUser,
   Fixtures,
+  ngayTuHomNay,
   promoteToAdmin,
   resetDatabase,
   seedFixtures,
@@ -114,6 +115,35 @@ describe('CRUD phong (e2e)', () => {
       .delete(`/api/rooms/${fixtures.doubleRoomId}`)
       .set('Authorization', bearer(customer))
       .expect(403);
+  });
+
+  it('tu choi PATCH khong co truong nao de cap nhat (400)', async () => {
+    await request(app.getHttpServer())
+      .patch(`/api/rooms/${fixtures.doubleRoomId}`)
+      .set('Authorization', bearer(admin))
+      .send({})
+      .expect(400);
+  });
+
+  it('tu choi xoa phong da co booking (409) va goi y doi sang maintenance', async () => {
+    await request(app.getHttpServer())
+      .post('/api/bookings')
+      .set('Authorization', bearer(customer))
+      .send({
+        roomId: fixtures.doubleRoomId,
+        checkIn: ngayTuHomNay(15),
+        checkOut: ngayTuHomNay(17),
+        guestName: 'Nguyen Van A',
+        guestEmail: 'a@example.com',
+      })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .delete(`/api/rooms/${fixtures.doubleRoomId}`)
+      .set('Authorization', bearer(admin))
+      .expect(409);
+
+    expect(response.body.message).toContain('maintenance');
   });
 
   it('admin doi trang thai phong sang maintenance roi xoa phong chua co booking', async () => {
