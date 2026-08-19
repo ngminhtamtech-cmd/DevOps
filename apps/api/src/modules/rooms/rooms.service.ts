@@ -152,8 +152,12 @@ export class RoomsService {
     if (isPostgresError(error, PG_ERROR.UNIQUE_VIOLATION)) {
       return new ConflictException(`Khach san nay da co phong so ${roomNumber}`);
     }
+    // Khoa ngoai ghep (migration 0003) khien ca hai tinh huong duoi day cung ném
+    // 23503: id khong ton tai, va loai phong ton tai nhung thuoc khach san khac.
     if (isPostgresError(error, PG_ERROR.FOREIGN_KEY_VIOLATION)) {
-      return new NotFoundException('hotelId hoac roomTypeId khong ton tai');
+      return new BadRequestException(
+        'hotelId hoac roomTypeId khong ton tai, hoac loai phong khong thuoc khach san nay',
+      );
     }
     return error;
   }
